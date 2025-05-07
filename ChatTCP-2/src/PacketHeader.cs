@@ -16,11 +16,6 @@ public enum PacketHeader
     Unknown,
 
     /// <summary>
-    /// This packet tells users to update.
-    /// </summary>
-    Update,
-
-    /// <summary>
     /// A string-filled packet.
     /// </summary>
     String,

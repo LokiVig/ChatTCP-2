@@ -3,7 +3,7 @@
 namespace ChatTCP;
 
 /// <summary>
-/// The application in of itself.
+/// A client of ChatTCP, can join servers and chat like a regular user.
 /// </summary>
 public class Program
 {
@@ -21,14 +21,14 @@ public class Program
     /// Determines whether or not the program is actually active.
     /// </summary>
     private static bool active = false;
-    
+
     /// <summary>
     /// Initializes the program.
     /// </summary>
     public static void Main()
     {
         // Create our local client
-        localClient = Client.Initialize("Weird Guy");
+        localClient = Client.Initialize("Username");
 
         // We should start by hosting a localhost server
         localServer = Server.Initialize(IPAddress.Loopback, 1337);
@@ -44,6 +44,9 @@ public class Program
         {
             // Update the local server
             localServer.Update();
+
+            // Set our cursor to the bottom
+            Console.SetCursorPosition(0, Console.BufferHeight - 1);
         }
     }
 }

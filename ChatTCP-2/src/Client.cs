@@ -36,7 +36,7 @@ public class Client
     public static Client Initialize(string username = "User")
     {
         // Log some information
-        Log.Info($"Initializing user \"{username}\"...");
+        Log.Info($"{{Client}} Initializing user \"{username}\"...");
 
         // Create a new client with the specified username
         Client res = new Client();
@@ -57,7 +57,8 @@ public class Client
         // If the socket's invalid...
         if (socket == null || !socket.Connected)
         {
-            Log.Error("Socket is invalid!");
+            // Log an error and return!
+            Log.Error("{Client} Socket is invalid!");
             return;
         }
 
@@ -86,7 +87,7 @@ public class Client
                 catch (SocketException exc) // If we catch an exception...
                 {
                     // Log about it and stop listening!
-                    Log.Error($"Socket exception caught while receiving packet!\n\"{exc.Message}\"");
+                    Log.Error($"{{Client}} Socket exception caught while receiving packet!\n\"{exc.Message}\"");
                     StopListening();
                 }
             }
@@ -128,7 +129,7 @@ public class Client
             if (socket == null)
             {
                 // Throw a new exception!
-                Log.Error("Socket is invalid!");
+                Log.Error("{Client} Socket is invalid!");
                 return NetworkResult.Error;
             }
 
@@ -149,13 +150,13 @@ public class Client
             socket.SendTo(Packet.FromString(Username!).Data, endpoint);
 
             // Log some information and return a successful operation
-            Log.Info($"Successfully connected to server \"{endpoint}\"!");
+            Log.Info($"{{Client}} Successfully connected to server \"{endpoint}\"!");
             return NetworkResult.OK;
         }
         catch (SocketException exc) // If we get a socket exception...
         {
             // Log it!
-            Log.Error($"Socket exception when trying to connect to a server!\n\"{exc.Message}\"");
+            Log.Error($"{{Client}} Socket exception when trying to connect to a server!\n\"{exc.Message}\"");
             return NetworkResult.Error;
         }
     }
@@ -173,7 +174,7 @@ public class Client
         switch (Packet.GetHeader(packet))
         {
             case PacketHeader.String:
-                Log.Info($"Received a string packet with the content of: {Packet.ToString(packet)}.");
+                Console.WriteLine(Packet.ToString(packet)); // Log the message
                 return;
         }
     }

@@ -43,7 +43,7 @@ public class Server
     public static Server Initialize(IPAddress? addr = null, int? port = null)
     {
         // Log some information
-        Log.Info($"Initializing server at address \"{addr}:{port}\"...");
+        Log.Info($"{{Server}} Initializing server at address \"{addr}:{port}\"...");
 
         // Create a new server, possibly with the specified address and port
         // If either are null, they'll be their default values
@@ -118,7 +118,7 @@ public class Server
         catch (Exception exc) // If we get an exception...
         {
             // Write to the console the error and return an unsuccessful network interaction!
-            Console.WriteLine($"Error occurred when trying to send packet!\n\"{exc.Message}\"");
+            Console.WriteLine($"{{Server}} Error occurred when trying to send packet!\n\"{exc.Message}\"");
             return NetworkResult.Error;
         }
     }
@@ -169,12 +169,7 @@ public class Server
         // For every client that's connected...
         foreach (Client cl in connectedClients)
         {
-            // If we fail to send an update message...
-            if (SendMessage($"You, \"{cl.Username}\", exist!", cl) != NetworkResult.OK)
-            {
-                // Exception!
-                throw new Exception("Fuck!");
-            }
+
         }
     }
 
@@ -199,13 +194,16 @@ public class Server
             username = Packet.ToString(Packet.FromData(receivedData));
         }
 
-        Log.Info($"Accepted connection of user \"{username}\"!");
+        Log.Info($"{{Server}} Accepted connection of user \"{username}\"!");
 
         // Create a new client from the information we just gathered
         Client client = new Client()
         {
             Username = username ?? "Unknown User"
         };
+
+        // Set the client's socket appropriately
+        client.SetSocket(connectedSocket);
 
         // Add it to the list of connected clients and log a new join!
         connectedClients.Add(client);
