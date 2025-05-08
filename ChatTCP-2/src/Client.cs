@@ -55,6 +55,21 @@ public class Client
     }
 
     /// <summary>
+    /// Disconnects this client from the server it's connected to.
+    /// </summary>
+    public void Disconnect()
+    {
+        // Stop listening
+        StopListening();
+
+        // Log that we've disconnected!
+        Log.Info($"We've disconnected from \"{ConnectedServer}\"!");
+
+        // Null our connected server
+        ConnectedServer = null;
+    }
+
+    /// <summary>
     /// Connects to a server from the specified server argument.
     /// </summary>
     /// <param name="server">The server we wish to connect to.</param>
@@ -119,7 +134,7 @@ public class Client
     public NetworkResult SendMessage(string msg)
     {
         // Send a packet containing our username and message
-        return SendPacket(Packet.FromString($"[{Username}]\t- {msg}", PacketHeader.UserMessage));
+        return SendPacket(Packet.FromString($"\"{Username}\" - {msg}"));
     }
 
     /// <summary>
@@ -135,7 +150,7 @@ public class Client
     /// <summary>
     /// Starts listening for incoming <see cref="Packet"/>s.
     /// </summary>
-    public void StartListening()
+    private void StartListening()
     {
         // If the socket's invalid...
         if (socket == null || !socket.Connected)
@@ -170,7 +185,7 @@ public class Client
                 catch (SocketException exc) // If we catch an exception...
                 {
                     // Log about it and stop listening!
-                    Log.Error($"{{Client}} Socket exception caught while receiving packet!\n\"{exc.Message}\"");
+                    Log.Error($"{{Client}} Socket exception caught while receiving packet!\n\"{exc.Message}\" - {exc.SocketErrorCode}");
                     StopListening();
                 }
             }
@@ -183,10 +198,10 @@ public class Client
     /// <summary>
     /// Stops listening for incoming packets.
     /// </summary>
-    public void StopListening()
+    private void StopListening()
     {
         isListening = false;
-        socket?.Close();
+        socket?.Disconnect(true);
     }
 
     /// <summary>
@@ -233,8 +248,7 @@ public class Client
                 Log.Error("Invalid packet header!");
                 return NetworkResult.Error;
 
-            case PacketHeader.ServerMessage:
-                Console.WriteLine(Packet.ToString(packet)); // Log the message
+            case PacketHeader.String:
                 return NetworkResult.OK;
         }
     }
@@ -249,11 +263,20 @@ public class Client
     }
 
     /// <summary>
-    /// Returns this <see cref="Client"/>'s <see cref="Socket"/>.
+    /// Gets this <see cref="Client"/>'s <see cref="Socket"/>.
     /// </summary>
     /// <returns>This <see cref="Client"/>'s <see cref="Socket"/>.</returns>
-    public Socket GetSocket()
+    public ref Socket GetSocket()
     {
-        return socket!;
+        return ref socket!;
+    }
+
+    /// <summary>
+    /// Get this <see cref="Client"/>'s <see cref="IPEndPoint"/>.
+    /// </summary>
+    /// <returns>This <see cref="Client"/>'s <see cref="IPEndPoint"/>.</returns>
+    public ref IPEndPoint GetEndPoint()
+    {
+        return ref localEndPoint!;
     }
 }

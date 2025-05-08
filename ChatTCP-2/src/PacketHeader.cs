@@ -18,15 +18,5 @@ public enum PacketHeader
     /// <summary>
     /// A regular string value.
     /// </summary>
-    String,
-
-    /// <summary>
-    /// A server's message.
-    /// </summary>
-    ServerMessage,
-
-    /// <summary>
-    /// A user's message.
-    /// </summary>
-    UserMessage
+    String
 }

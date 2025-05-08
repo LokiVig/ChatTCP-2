@@ -1,13 +1,12 @@
 ﻿using System.Net;
 using System.Net.Sockets;
-using System.Reflection.Metadata.Ecma335;
 
 namespace ChatTCP;
 
 /// <summary>
-/// A server with a list of connected users, hosted from a specified address and port.
+/// A server with a list of connected clients, hosted from a specified address and port.
 /// </summary>
-public class Server
+public class Server : IDisposable
 {
     /// <summary>
     /// The IP address this server is hosting from.
@@ -18,6 +17,11 @@ public class Server
     /// The port this server is hosting from.
     /// </summary>
     public int Port;
+
+    /// <summary>
+    /// The list of messages sent in this server.
+    /// </summary>
+    public List<Message> Messages = new();
 
     /// <summary>
     /// The actual networking socket of this server.
@@ -35,9 +39,9 @@ public class Server
     private List<Client> connectedClients = new();
 
     /// <summary>
-    /// Initializes a new server with the provided address and port.
+    /// Initializes a new <see cref="Server"/> with the provided IP address and port.
     /// </summary>
-    /// <param name="addr">The IP Address we wish to host from.</param>
+    /// <param name="addr">The IP address we wish to host from.</param>
     /// <param name="port">The port we wish to host from.</param>
     /// <returns>A new <see cref="Server"/>.</returns>
     public static Server Initialize(IPAddress? addr = null, int? port = null)
@@ -52,6 +56,7 @@ public class Server
         res.Port = port ?? 27015;
         res.socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
         res.localEndPoint = new IPEndPoint(res.Address, res.Port);
+        res.socket.Blocking = false;
         res.socket.Bind(res.localEndPoint);
         res.socket.Listen();
 
@@ -60,24 +65,60 @@ public class Server
     }
 
     /// <summary>
+    /// Closes and disposes of this server.
+    /// </summary>
+    public void Close()
+    {
+        // For every client connected...
+        foreach (Client cl in connectedClients)
+        {
+            // Tell them to disconnect!
+            cl.GetSocket().Disconnect(true);
+        }
+
+        // Dispose of ourselves
+        Dispose();
+    }
+
+    /// <summary>
     /// Sends a message globally to all connected sockets.
     /// </summary>
     /// <param name="msg">The message we wish to send.</param>
-    public NetworkResult SendMessage(string msg)
+    public NetworkResult SendMessage(string msg, bool server)
     {
+        // Create a new message
+        Message message = new Message()
+        {
+            Content = msg,
+            TimeSent = DateTime.Now
+        };
+
+        // Add the message to our list of messages
+        Messages.Add(message);
+
         // Send a packet with the message
-        return SendPacket(Packet.FromString($"[SERVER] {msg}", PacketHeader.ServerMessage));
+        return SendPacket(Packet.FromString($"{message}"));
     }
 
     /// <summary>
     /// Sends a message to a specific client.
     /// </summary>
     /// <param name="msg">The message we wish to send.</param>
-    /// <param name="client">The client to receive our message.</param>
-    public NetworkResult SendMessage(string msg, Client client)
+    /// <param name="recipient">The client to receive our message.</param>
+    public NetworkResult SendMessage(string msg, bool server, Client recipient)
     {
+        // Create a new message
+        Message message = new Message()
+        {
+            Content = msg,
+            TimeSent = DateTime.Now
+        };
+
+        // Add the message to our list of messages
+        Messages.Add(message);
+
         // Send a packet with the message
-        return SendPacket(Packet.FromString($"[SERVER] {msg}", PacketHeader.ServerMessage), client);
+        return SendPacket(Packet.FromString($"{message}"), recipient);
     }
 
     /// <summary>
@@ -92,33 +133,64 @@ public class Server
             throw new Exception("Socket is invalid!");
         }
 
-        // Buffer socket, holds the value of the socket's acception, null otherwise
-        Socket? connectedSocket = null;
-
-        // If we just accepted a connection...
-        if ((connectedSocket = socket.Accept()) != null)
+        try
         {
-            // Do the special things to do!
-            OnAcceptConnection(connectedSocket);
+            // If we can poll...
+            if (socket.Poll(0, SelectMode.SelectRead))
+            {
+                // Buffer socket, holds the value of the socket's acception, null otherwise
+                Socket? connectedSocket = null;
+
+                // If we just accepted a connection...
+                if ((connectedSocket = socket.Accept()) != null)
+                {
+                    // Do the special things to do!
+                    OnAcceptConnection(connectedSocket);
+                }
+            }
         }
-
-        // Create a new buffer and amount of bytes read
-        byte[] buffer = new byte[1024];
-        int bytesRead = socket.Receive(buffer);
-
-        // If we read any bytes...
-        if (bytesRead > 0)
+        catch (SocketException exc)
         {
-            // Get the data, copy it into a new array, and receive it as a packet!
-            byte[] receivedData = new byte[bytesRead];
-            Array.Copy(buffer, receivedData, bytesRead);
-            ReceivePacket(receivedData);
+            Log.Error($"{{Server}} Socket exception caught while trying to accept new sockets!\n\"{exc.Message}\"");
+            return;
         }
 
         // For every client that's connected...
         foreach (Client cl in connectedClients)
         {
+            // If the client's socket is invalid...
+            if (cl.GetSocket() == null || !cl.GetSocket().Connected)
+            {
+                // They're disconnected! Send a message to everyone of such and remove them from the list of clients
+                connectedClients.Remove(cl);
+                SendMessage($"User \"{cl.Username}\" has disconnected!", true);
+                continue;
+            }
 
+            try
+            {
+                // If we can poll...
+                if (cl.GetSocket().Poll(0, SelectMode.SelectRead))
+                {
+                    // Create a new buffer and amount of bytes read
+                    byte[] buffer = new byte[1024];
+                    int bytesRead = cl.GetSocket().Receive(buffer);
+
+                    // If we read any bytes...
+                    if (bytesRead > 0)
+                    {
+                        // Get the data, copy it into a new array, and receive it as a packet!
+                        byte[] receivedData = new byte[bytesRead];
+                        Array.Copy(buffer, receivedData, bytesRead);
+                        ReceivePacket(receivedData, cl);
+                    }
+                }
+            }
+            catch (SocketException exc)
+            {
+                Log.Error($"{{Server}} Socket exception caught while trying to receive packets!\n\"{exc.Message}\"");
+                return;
+            }
         }
     }
 
@@ -191,7 +263,7 @@ public class Server
     /// </summary>
     /// <param name="data">The data we've received.</param>
     /// <returns>The result of the network function.</returns>
-    public NetworkResult ReceivePacket(byte[] data)
+    public NetworkResult ReceivePacket(byte[] data, Client? client = null)
     {
         // Get a packet from the data
         Packet packet = Packet.FromData(data);
@@ -204,13 +276,9 @@ public class Server
                 Log.Error("Invalid packet header!");
                 return NetworkResult.Error;
 
-            // We should send the received message to every user in the server!
-            case PacketHeader.UserMessage:
-                SendMessage(packet.ToString());
-                return NetworkResult.OK;
-
+            // We should send the received string to every user in the server!
             case PacketHeader.String:
-                return NetworkResult.OK;
+                return SendMessage(packet.ToString(), false);
         }
     }
 
@@ -248,7 +316,7 @@ public class Server
 
         // Add it to the list of connected clients and log a new join!
         connectedClients.Add(client);
-        SendMessage($"User \"{client.Username}\" has joined the server!");
+        SendMessage($"User \"{client.Username}\" has joined the server!", true);
     }
 
     /// <summary>
@@ -276,5 +344,12 @@ public class Server
     public IPEndPoint GetLocalEndPoint()
     {
         return localEndPoint!;
+    }
+
+    public void Dispose()
+    {
+        // Dispose of variables!
+        socket?.Close();
+        connectedClients.Clear();
     }
 }

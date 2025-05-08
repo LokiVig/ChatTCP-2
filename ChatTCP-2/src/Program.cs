@@ -10,12 +10,12 @@ public class Program
     /// <summary>
     /// The program's local server, if we're hosting one.
     /// </summary>
-    private static Server? localServer;
+    public static Server? LocalServer;
 
     /// <summary>
     /// The program's local client, we use this guy to connect to other servers 'n' stuff.
     /// </summary>
-    private static Client? localClient;
+    public static Client? LocalClient;
 
     /// <summary>
     /// Determines whether or not the program is actually active.
@@ -28,13 +28,13 @@ public class Program
     public static void Main()
     {
         // Create our local client
-        localClient = Client.Initialize("Username");
+        LocalClient = Client.Initialize("Username");
 
         // We should start by hosting a localhost server
-        localServer = Server.Initialize(IPAddress.Loopback, 1337);
+        LocalServer = Server.Initialize(IPAddress.Loopback, 1337);
 
         // Connect to the localhost server
-        localClient.ConnectToServer(localServer);
+        LocalClient.ConnectToServer(LocalServer);
 
         // We're now active!
         active = true;
@@ -43,7 +43,16 @@ public class Program
         while (active)
         {
             // Update the local server
-            localServer.Update();
+            LocalServer.Update();
+
+            // Send a debug message
+            if (LocalClient.SendMessage("Debug!") != NetworkResult.OK)
+            {
+                throw new Exception();
+            }
         }
+
+        // Dispose of the server
+        LocalServer.Close();
     }
 }

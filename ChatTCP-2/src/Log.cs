@@ -15,7 +15,7 @@ public struct Log
     /// Logs a warning.
     /// </summary>
     /// <param name="msg">The message we wish to log.</param>
-    public static void Warn(string msg)
+    public static void Warning(string msg)
     {
         Console.WriteLine($"{DateTime.Now.ToShortTimeString()} [WARNING] - {msg}");
     }

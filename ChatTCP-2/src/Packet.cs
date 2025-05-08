@@ -3,12 +3,12 @@
 namespace ChatTCP;
 
 /// <summary>
-/// A packet with a byte array for data.
+/// A packet with a <see langword="byte"/> array for data.
 /// </summary>
 public struct Packet
 {
     /// <summary>
-    /// The data of this packet, as a byte array.
+    /// The data of this <see cref="Packet"/>, as a <see langword="byte"/> array.
     /// </summary>
     public byte[] Data;
 
@@ -27,12 +27,11 @@ public struct Packet
     /// Creates a new <see cref="Packet"/> with data from the provided <see langword="string"/>.
     /// </summary>
     /// <param name="str">The string we wish to parse into a <see cref="Packet"/>.</param>
-    /// <param name="header">The header of this string packet.</param>
     /// <returns>A new <see cref="Packet"/> with data from the provided <see langword="string"/>.</returns>
-    public static Packet FromString(string str, PacketHeader header = PacketHeader.String)
+    public static Packet FromString(string str)
     {
         // Create a new packet with the header information of being a string, data being the string itself as bytes
-        return new Packet() { Data = Encoding.UTF8.GetBytes($"{header}|{str}") };
+        return new Packet() { Data = Encoding.UTF8.GetBytes($"{PacketHeader.String}|{str}") };
     }
 
     /// <summary>
@@ -115,19 +114,17 @@ public struct Packet
         // Encode the data to string
         string data = Encoding.UTF8.GetString(packet.Data);
 
-        // Ensure we have a pipe differing the header to the data
-        int separatorIdx = data.IndexOf('|');
-
         // Get the header
         PacketHeader header = packet.GetHeader();
+
+        // Ensure we have a pipe differing the header to the data
+        int separatorIdx = data.IndexOf('|');
 
         // Get the content
         string content = data.Substring(separatorIdx + 1);
 
         // If the header isn't a string...
-        if (header != PacketHeader.String && 
-            header != PacketHeader.ServerMessage && 
-            header != PacketHeader.UserMessage)
+        if (header != PacketHeader.String)
         {
             // We can't do shit!
             throw new Exception("Header is not a string format!");
