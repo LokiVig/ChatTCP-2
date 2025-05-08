@@ -16,12 +16,17 @@ public enum PacketHeader
     Unknown,
 
     /// <summary>
-    /// A string-filled packet.
+    /// A regular string value.
     /// </summary>
     String,
 
     /// <summary>
-    /// An integer-filled packet.
+    /// A server's message.
     /// </summary>
-    Integer
+    ServerMessage,
+
+    /// <summary>
+    /// A user's message.
+    /// </summary>
+    UserMessage
 }

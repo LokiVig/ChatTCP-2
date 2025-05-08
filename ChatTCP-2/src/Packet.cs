@@ -27,11 +27,12 @@ public struct Packet
     /// Creates a new <see cref="Packet"/> with data from the provided <see langword="string"/>.
     /// </summary>
     /// <param name="str">The string we wish to parse into a <see cref="Packet"/>.</param>
+    /// <param name="header">The header of this string packet.</param>
     /// <returns>A new <see cref="Packet"/> with data from the provided <see langword="string"/>.</returns>
-    public static Packet FromString(string str)
+    public static Packet FromString(string str, PacketHeader header = PacketHeader.String)
     {
         // Create a new packet with the header information of being a string, data being the string itself as bytes
-        return new Packet() { Data = Encoding.UTF8.GetBytes($"{PacketHeader.String}|{str}") };
+        return new Packet() { Data = Encoding.UTF8.GetBytes($"{header}|{str}") };
     }
 
     /// <summary>
@@ -56,13 +57,13 @@ public struct Packet
         string data = Encoding.UTF8.GetString(packet.Data);
 
         // The index of the separator character
-        int separationIdx = -1;
+        int separatorIdx = -1;
 
         // Check if there's a separator character...
-        if ((separationIdx = data.IndexOf('|')) != -1)
+        if ((separatorIdx = data.IndexOf('|')) != -1)
         {
             // Get the first section of the text
-            string header = data.Substring(0, separationIdx);
+            string header = data.Substring(0, separatorIdx);
 
             // Check against every header type...
             foreach (PacketHeader value in Enum.GetValues(typeof(PacketHeader)))
@@ -95,6 +96,16 @@ public struct Packet
     }
 
     /// <summary>
+    /// Gets the <see cref="PacketHeader"/> of this specific <see cref="Packet"/>.
+    /// </summary>
+    /// <returns>The <see cref="PacketHeader"/> of this <see cref="Packet"/>.</returns>
+    public PacketHeader GetHeader()
+    {
+        // Simply call the above method
+        return GetHeader(this);
+    }
+
+    /// <summary>
     /// Translates a <see cref="Packet"/> to a <see langword="string"/>.
     /// </summary>
     /// <param name="packet">The packet we wish to translate from.</param>
@@ -105,22 +116,34 @@ public struct Packet
         string data = Encoding.UTF8.GetString(packet.Data);
 
         // Ensure we have a pipe differing the header to the data
-        int delimiterIndex = data.IndexOf('|');
+        int separatorIdx = data.IndexOf('|');
 
         // Get the header
-        PacketHeader header = GetHeader(packet);
+        PacketHeader header = packet.GetHeader();
 
         // Get the content
-        string content = data.Substring(delimiterIndex + 1);
+        string content = data.Substring(separatorIdx + 1);
 
         // If the header isn't a string...
-        if (header != PacketHeader.String)
+        if (header != PacketHeader.String && 
+            header != PacketHeader.ServerMessage && 
+            header != PacketHeader.UserMessage)
         {
             // We can't do shit!
-            throw new Exception("Header does not match string!");
+            throw new Exception("Header is not a string format!");
         }
 
         // Return the parsed content!
         return content;
+    }
+
+    /// <summary>
+    /// Translates a <see cref="Packet"/> to a <see langword="string"/>.
+    /// </summary>
+    /// <returns>The data of this <see cref="Packet"/> as a <see langword="string"/>.</returns>
+    public new string ToString()
+    {
+        // Simply call the above method
+        return ToString(this);
     }
 }

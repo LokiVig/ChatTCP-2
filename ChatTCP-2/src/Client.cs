@@ -14,6 +14,11 @@ public class Client
     public string? Username;
 
     /// <summary>
+    /// The server we're connected to.
+    /// </summary>
+    public IPEndPoint? ConnectedServer;
+
+    /// <summary>
     /// The client's socket.
     /// </summary>
     private Socket? socket;
@@ -47,6 +52,84 @@ public class Client
 
         // Return the result
         return res;
+    }
+
+    /// <summary>
+    /// Connects to a server from the specified server argument.
+    /// </summary>
+    /// <param name="server">The server we wish to connect to.</param>
+    public NetworkResult ConnectToServer(Server server)
+    {
+        // Call the regular ConnectToServer method with the server's address and port
+        return ConnectToServer(server.GetLocalEndPoint());
+    }
+
+    /// <summary>
+    /// Connects to a server with the specified address and port.
+    /// </summary>
+    /// <param name="addr">The IP address of the server we wish to connect to.</param>
+    /// <param name="port">The port we wish to connect to.</param>
+    public NetworkResult ConnectToServer(IPEndPoint endpoint)
+    {
+        try
+        {
+            // If the socket is null...
+            if (socket == null)
+            {
+                // Throw a new exception!
+                Log.Error("{Client} Socket is invalid!");
+                return NetworkResult.Error;
+            }
+
+            // If we're already connected...
+            if (socket.Connected)
+            {
+                // Disconnect us!
+                socket.Disconnect(true);
+            }
+
+            // Connect to the server
+            socket.Connect(endpoint);
+
+            // Start listening
+            StartListening();
+
+            // Send our username to the server
+            socket.SendTo(Packet.FromString(Username!).Data, endpoint);
+
+            // We're now connected to this server
+            ConnectedServer = endpoint;
+
+            // Log some information and return a successful operation
+            Log.Info($"{{Client}} Successfully connected to server \"{endpoint}\"!");
+            return NetworkResult.OK;
+        }
+        catch (SocketException exc) // If we get a socket exception...
+        {
+            // Log it!
+            Log.Error($"{{Client}} Socket exception when trying to connect to a server!\n\"{exc.Message}\"");
+            return NetworkResult.Error;
+        }
+    }
+
+    /// <summary>
+    /// Sends a message to everyone in the server.
+    /// </summary>
+    /// <param name="msg">The message we wish to send.</param>
+    public NetworkResult SendMessage(string msg)
+    {
+        // Send a packet containing our username and message
+        return SendPacket(Packet.FromString($"[{Username}]\t- {msg}", PacketHeader.UserMessage));
+    }
+
+    /// <summary>
+    /// Sends a message to a specific <see cref="Client"/>.
+    /// </summary>
+    /// <param name="msg">The message we wish to send.</param>
+    /// <param name="client">The client we wish to send a message to.</param>
+    public NetworkResult SendMessage(string msg, Client client)
+    {
+        throw new NotImplementedException();
     }
 
     /// <summary>
@@ -107,56 +190,28 @@ public class Client
     }
 
     /// <summary>
-    /// Connects to a server from the specified server argument.
+    /// Sends a packet to the server.
     /// </summary>
-    /// <param name="server">The server we wish to connect to.</param>
-    public NetworkResult ConnectToServer(Server server)
-    {
-        // Call the regular ConnectToServer method with the server's address and port
-        return ConnectToServer(server.GetLocalEndPoint());
-    }
-
-    /// <summary>
-    /// Connects to a server with the specified address and port.
-    /// </summary>
-    /// <param name="addr">The IP address of the server we wish to connect to.</param>
-    /// <param name="port">The port we wish to connect to.</param>
-    public NetworkResult ConnectToServer(IPEndPoint endpoint)
+    /// <param name="packet">The packet we wish to send to the server.</param>
+    public NetworkResult SendPacket(Packet packet)
     {
         try
         {
-            // If the socket is null...
-            if (socket == null)
+            // Ensure the connected server is valid...
+            if (ConnectedServer == null)
             {
-                // Throw a new exception!
-                Log.Error("{Client} Socket is invalid!");
                 return NetworkResult.Error;
             }
 
-            // If we're already connected...
-            if (socket.Connected)
-            {
-                // Disconnect us!
-                socket.Disconnect(true);
-            }
+            // Send the packet's data to the server
+            GetSocket().SendTo(packet.Data, ConnectedServer);
 
-            // Connect to the server
-            socket.Connect(endpoint);
-
-            // Start listening
-            StartListening();
-
-            // Send our username to the server
-            socket.SendTo(Packet.FromString(Username!).Data, endpoint);
-
-            // Log some information and return a successful operation
-            Log.Info($"{{Client}} Successfully connected to server \"{endpoint}\"!");
+            // Return okay!
             return NetworkResult.OK;
         }
-        catch (SocketException exc) // If we get a socket exception...
+        catch (Exception exc)
         {
-            // Log it!
-            Log.Error($"{{Client}} Socket exception when trying to connect to a server!\n\"{exc.Message}\"");
+            Log.Error($"{{Client}} Error occurred when trying to send packet!\n\"{exc.Message}\"");
             return NetworkResult.Error;
         }
     }
@@ -165,17 +220,22 @@ public class Client
     /// Receive information from a packet.
     /// </summary>
     /// <param name="data">The data we received.</param>
-    public void ReceivePacket(byte[] data)
+    public NetworkResult ReceivePacket(byte[] data)
     {
         // Get a packet from the data
         Packet packet = Packet.FromData(data);
 
-        // Do different actions dependant on the received packet's header
-        switch (Packet.GetHeader(packet))
+        // Do different things depending on the received packet's header
+        switch (packet.GetHeader())
         {
-            case PacketHeader.String:
+            default:
+            case PacketHeader.Invalid:
+                Log.Error("Invalid packet header!");
+                return NetworkResult.Error;
+
+            case PacketHeader.ServerMessage:
                 Console.WriteLine(Packet.ToString(packet)); // Log the message
-                return;
+                return NetworkResult.OK;
         }
     }
 

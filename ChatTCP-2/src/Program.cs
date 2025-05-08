@@ -10,12 +10,12 @@ public class Program
     /// <summary>
     /// The program's local server, if we're hosting one.
     /// </summary>
-    public static Server? localServer;
+    private static Server? localServer;
 
     /// <summary>
     /// The program's local client, we use this guy to connect to other servers 'n' stuff.
     /// </summary>
-    public static Client? localClient;
+    private static Client? localClient;
 
     /// <summary>
     /// Determines whether or not the program is actually active.
@@ -44,9 +44,6 @@ public class Program
         {
             // Update the local server
             localServer.Update();
-
-            // Set our cursor to the bottom
-            Console.SetCursorPosition(0, Console.BufferHeight - 1);
         }
     }
 }

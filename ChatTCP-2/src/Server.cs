@@ -60,6 +60,69 @@ public class Server
     }
 
     /// <summary>
+    /// Sends a message globally to all connected sockets.
+    /// </summary>
+    /// <param name="msg">The message we wish to send.</param>
+    public NetworkResult SendMessage(string msg)
+    {
+        // Send a packet with the message
+        return SendPacket(Packet.FromString($"[SERVER] {msg}", PacketHeader.ServerMessage));
+    }
+
+    /// <summary>
+    /// Sends a message to a specific client.
+    /// </summary>
+    /// <param name="msg">The message we wish to send.</param>
+    /// <param name="client">The client to receive our message.</param>
+    public NetworkResult SendMessage(string msg, Client client)
+    {
+        // Send a packet with the message
+        return SendPacket(Packet.FromString($"[SERVER] {msg}", PacketHeader.ServerMessage), client);
+    }
+
+    /// <summary>
+    /// Updates this server.
+    /// </summary>
+    public void Update()
+    {
+        // If the socket is invalid...
+        if (socket == null || !socket.IsBound)
+        {
+            // Throw an exception
+            throw new Exception("Socket is invalid!");
+        }
+
+        // Buffer socket, holds the value of the socket's acception, null otherwise
+        Socket? connectedSocket = null;
+
+        // If we just accepted a connection...
+        if ((connectedSocket = socket.Accept()) != null)
+        {
+            // Do the special things to do!
+            OnAcceptConnection(connectedSocket);
+        }
+
+        // Create a new buffer and amount of bytes read
+        byte[] buffer = new byte[1024];
+        int bytesRead = socket.Receive(buffer);
+
+        // If we read any bytes...
+        if (bytesRead > 0)
+        {
+            // Get the data, copy it into a new array, and receive it as a packet!
+            byte[] receivedData = new byte[bytesRead];
+            Array.Copy(buffer, receivedData, bytesRead);
+            ReceivePacket(receivedData);
+        }
+
+        // For every client that's connected...
+        foreach (Client cl in connectedClients)
+        {
+
+        }
+    }
+
+    /// <summary>
     /// Sends a packet to all clients.
     /// </summary>
     /// <param name="packet">The packet we wish to send.</param>
@@ -118,58 +181,36 @@ public class Server
         catch (Exception exc) // If we get an exception...
         {
             // Write to the console the error and return an unsuccessful network interaction!
-            Console.WriteLine($"{{Server}} Error occurred when trying to send packet!\n\"{exc.Message}\"");
+            Log.Error($"{{Server}} Error occurred when trying to send packet!\n\"{exc.Message}\"");
             return NetworkResult.Error;
         }
     }
 
     /// <summary>
-    /// Sends a message globally to all connected sockets.
+    /// Receives a packet from a client.
     /// </summary>
-    /// <param name="msg">The message we wish to send.</param>
-    public NetworkResult SendMessage(string msg)
+    /// <param name="data">The data we've received.</param>
+    /// <returns>The result of the network function.</returns>
+    public NetworkResult ReceivePacket(byte[] data)
     {
-        // Send a packet with the message
-        return SendPacket(Packet.FromString($"[SERVER] {msg}"));
-    }
+        // Get a packet from the data
+        Packet packet = Packet.FromData(data);
 
-    /// <summary>
-    /// Sends a message to a specific client.
-    /// </summary>
-    /// <param name="msg">The message we wish to send.</param>
-    /// <param name="client">The client to receive our message.</param>
-    public NetworkResult SendMessage(string msg, Client client)
-    {
-        // Send a packet with the message
-        return SendPacket(Packet.FromString($"[SERVER] {msg}"), client);
-    }
-
-    /// <summary>
-    /// Updates this server.
-    /// </summary>
-    public void Update()
-    {
-        // If the socket is null...
-        if (socket == null)
+        // Do different things depending on the received packet's header
+        switch (packet.GetHeader())
         {
-            // Throw an exception
-            throw new NullReferenceException("Socket is null!");
-        }
+            default:
+            case PacketHeader.Invalid:
+                Log.Error("Invalid packet header!");
+                return NetworkResult.Error;
 
-        // Buffer socket, holds the value of the socket's acception, null otherwise
-        Socket? connectedSocket = null;
+            // We should send the received message to every user in the server!
+            case PacketHeader.UserMessage:
+                SendMessage(packet.ToString());
+                return NetworkResult.OK;
 
-        // If we just accepted a connection...
-        if ((connectedSocket = socket.Accept()) != null)
-        {
-            // Do the special things to do!
-            OnAcceptConnection(connectedSocket);
-        }
-
-        // For every client that's connected...
-        foreach (Client cl in connectedClients)
-        {
-
+            case PacketHeader.String:
+                return NetworkResult.OK;
         }
     }
 
@@ -191,7 +232,7 @@ public class Server
             // Parse them from bytes to string
             byte[] receivedData = new byte[bytesRead];
             Array.Copy(buffer, receivedData, bytesRead);
-            username = Packet.ToString(Packet.FromData(receivedData));
+            username = Packet.FromData(receivedData).ToString();
         }
 
         Log.Info($"{{Server}} Accepted connection of user \"{username}\"!");
@@ -208,6 +249,15 @@ public class Server
         // Add it to the list of connected clients and log a new join!
         connectedClients.Add(client);
         SendMessage($"User \"{client.Username}\" has joined the server!");
+    }
+
+    /// <summary>
+    /// Sets this <see cref="Server"/>'s <see cref="Socket"/>.
+    /// </summary>
+    /// <param name="socket">The <see cref="Socket"/> we wish this <see cref="Server"/> to use.</param>
+    public void SetSocket(Socket socket)
+    {
+        this.socket = socket;
     }
 
     /// <summary>
