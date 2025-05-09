@@ -6,7 +6,7 @@ namespace ChatTCP;
 /// <summary>
 /// A client that can be connected to a server, has a username, etc.
 /// </summary>
-public class Client
+public class Client : IDisposable
 {
     /// <summary>
     /// The visual username of this client.
@@ -244,7 +244,7 @@ public class Client
     private void StopListening()
     {
         isListening = false;
-        socket?.Disconnect(true);
+        socket?.Close();
     }
 
     /// <summary>
@@ -262,7 +262,7 @@ public class Client
             }
 
             // Send the packet's data to the server
-            GetSocket().SendTo(packet.Data, ConnectedServer);
+            GetSocket()?.SendTo(packet.Data, ConnectedServer);
 
             // Return okay!
             return NetworkResult.OK;
@@ -308,17 +308,26 @@ public class Client
     /// Gets this <see cref="Client"/>'s <see cref="Socket"/>.
     /// </summary>
     /// <returns>This <see cref="Client"/>'s <see cref="Socket"/>.</returns>
-    public ref Socket GetSocket()
+    public Socket? GetSocket()
     {
-        return ref socket!;
+        return socket;
     }
 
     /// <summary>
     /// Get this <see cref="Client"/>'s <see cref="IPEndPoint"/>.
     /// </summary>
     /// <returns>This <see cref="Client"/>'s <see cref="IPEndPoint"/>.</returns>
-    public ref IPEndPoint GetEndPoint()
+    public IPEndPoint? GetEndPoint()
     {
-        return ref localEndPoint!;
+        return localEndPoint;
+    }
+
+    public void Dispose()
+    {
+        // Disconnect from the current server
+        Disconnect();
+
+        // Close the socket
+        socket?.Close();
     }
 }

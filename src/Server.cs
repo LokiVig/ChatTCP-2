@@ -74,7 +74,7 @@ public class Server : IDisposable
         foreach (Client cl in connectedClients)
         {
             // Tell them to disconnect!
-            cl.GetSocket().Disconnect(true);
+            cl.GetSocket()?.Disconnect(true);
         }
 
         // Dispose of ourselves
@@ -126,7 +126,7 @@ public class Server : IDisposable
         foreach (Client cl in connectedClients)
         {
             // If the client's socket is invalid...
-            if (cl.GetSocket() == null || !cl.GetSocket().Connected)
+            if (cl.GetSocket() == null || !cl.GetSocket()!.Connected)
             {
                 // They're disconnected! Send a message to everyone of such and remove them from the list of clients
                 connectedClients.Remove(cl);
@@ -134,19 +134,19 @@ public class Server : IDisposable
                 continue;
             }
 
-            if (cl.GetSocket().Available > 0)
+            if (cl.GetSocket()!.Available > 0)
             {
                 // Create a new buffer and amount of bytes read
                 byte[] buffer = new byte[1024];
-                int bytesRead = cl.GetSocket().Receive(buffer);
+                int read = cl.GetSocket()!.Receive(buffer);
 
                 // If we read any bytes...
-                if (bytesRead > 0)
+                if (read > 0)
                 {
                     // Get the data, copy it into a new array, and receive it as a packet!
-                    byte[] receivedData = new byte[bytesRead];
-                    Array.Copy(buffer, receivedData, bytesRead);
-                    ReceivePacket(receivedData, cl);
+                    byte[] data = new byte[read];
+                    Array.Copy(buffer, data, read);
+                    ReceivePacket(Packet.FromData(data), cl);
                 }
             }
         }
@@ -183,7 +183,7 @@ public class Server : IDisposable
     public NetworkResult SendPacket(Packet packet, Client recipient)
     {
         // Send the packet to the recipient's socket
-        return SendPacket(packet, recipient.GetSocket());
+        return SendPacket(packet, recipient.GetSocket()!);
     }
 
     /// <summary>
@@ -219,13 +219,10 @@ public class Server : IDisposable
     /// <summary>
     /// Receives a packet from a client.
     /// </summary>
-    /// <param name="data">The data we've received.</param>
+    /// <param name="packet">The <see cref="Packet"/> we've received.</param>
     /// <returns>The result of the network function.</returns>
-    public NetworkResult ReceivePacket(byte[] data, Client? client = null)
+    public NetworkResult ReceivePacket(Packet packet, Client? client = null)
     {
-        // Get a packet from the data
-        Packet packet = Packet.FromData(data);
-
         // Do different things depending on the received packet's header
         switch (packet.GetHeader())
         {

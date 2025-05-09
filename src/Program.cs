@@ -27,7 +27,7 @@ public class Program
     /// </summary>
     public static async Task Main()
     {
-        // Create our local client
+        // Create our local client with a specified username
         LocalClient = Client.Initialize("Lokiv");
 
         // We should start by hosting a localhost server
@@ -52,12 +52,19 @@ public class Program
             // Draw our messages
             DrawMessages();
 
-            // Handle our inputs
-            HandleInput();
+            // If our input handling didn't have an okay network result...
+            if (HandleInput() != NetworkResult.OK)
+            {
+                // Throw an exception!
+                throw new Exception("A network function in HandleInput() resulted in an error!");
+            }
 
             // Make the while loop take it easy! Don't wanna overload the CPU
             await Task.Delay(25);
         }
+
+        // Dispose of the local client
+        LocalClient.Dispose();
 
         // Dispose of the server
         LocalServer.Close();
@@ -85,16 +92,16 @@ public class Program
     /// <summary>
     /// Handles user inputs.
     /// </summary>
-    private static void HandleInput()
+    private static NetworkResult? HandleInput()
     {
         // Set our console cursor to the bottom of the screen
-        Console.SetCursorPosition(0, Console.BufferHeight - 1);
+        Console.SetCursorPosition(0, Console.WindowHeight - 1);
 
         // Show a lil' '>' for the user input
         Console.Write("> ");
 
         // Offset our cursor from the '>'
-        Console.SetCursorPosition(2, Console.BufferHeight - 1);
+        Console.SetCursorPosition(2, Console.WindowHeight - 1);
 
         // Take the user's input
         string input = Console.ReadLine() ?? string.Empty;
@@ -104,24 +111,32 @@ public class Program
             input.Contains("/conn"))
         {
             // Send a message to ourselves as though we're the server
-            LocalClient?.SendMessage($"Connected to: {LocalServer?.GetEndPoint()}", ["SERVER", LocalClient?.Username]);
+            return LocalClient?.SendMessage($"Connected to: {LocalServer?.GetEndPoint()}", ["SERVER", LocalClient?.Username]);
         }
-        else // We didn't do anything special! Send our input as a regular message
+
+        // We should shut down!
+        if (input.Contains("/exit") ||
+            input.Contains("/quit"))
         {
-            // If we didn't input emptiness...
-            if (!string.IsNullOrEmpty(input))
-            {
-                // If the input contains an '@' symbol...
-                if (input.Contains('@'))
-                {
-                    // We're sending a DM to the person we're @'ing!
-                    LocalClient?.SendMessage(input.Split('@')[0].TrimEnd(), [LocalClient?.Username, input.Split('@')[1]]);
-                    return;
-                }
-                
-                // Send the input!
-                LocalClient?.SendMessage($"{LocalClient?.Username}: {input}");
-            }
+            active = false;
+            return NetworkResult.OK;
         }
+
+        // If we didn't input emptiness...
+        if (!string.IsNullOrEmpty(input))
+        {
+            // If the input contains an '@' symbol...
+            if (input.Contains('@'))
+            {
+                // We're sending a DM to the person we're @'ing!
+                return LocalClient?.SendMessage(input.Split('@')[0].TrimEnd(), [LocalClient?.Username, input.Split('@')[1]]);
+            }
+
+            // Send the input!
+            return LocalClient?.SendMessage($"{LocalClient?.Username}: {input}");
+        }
+
+        // We didn't do anything, which is okay!
+        return NetworkResult.OK;
     }
 }
