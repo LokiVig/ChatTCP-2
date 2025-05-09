@@ -26,12 +26,23 @@ public struct Packet
     /// <summary>
     /// Creates a new <see cref="Packet"/> with data from the provided <see langword="string"/>.
     /// </summary>
-    /// <param name="str">The string we wish to parse into a <see cref="Packet"/>.</param>
+    /// <param name="str">The <see langword="string"/> we wish to parse into a <see cref="Packet"/>.</param>
     /// <returns>A new <see cref="Packet"/> with data from the provided <see langword="string"/>.</returns>
     public static Packet FromString(string str)
     {
         // Create a new packet with the header information of being a string, data being the string itself as bytes
         return new Packet() { Data = Encoding.UTF8.GetBytes($"{PacketHeader.String}|{str}") };
+    }
+
+    /// <summary>
+    /// Creates a new <see cref="Packet"/> with data from the provided <see langword="int"/>.
+    /// </summary>
+    /// <param name="integer">The <see langword="int"/> we wish to parse into a <see cref="Packet"/>.</param>
+    /// <returns>A new <see cref="Packet"/> with data from the provided <see langword="int"/>.</returns>
+    public static Packet FromInteger(int integer)
+    {
+        // Create a new packet with the header information of being an integer, data being the integer itself as bytes
+        return new Packet() { Data = Encoding.UTF8.GetBytes($"{PacketHeader.Integer}|{integer}") };
     }
 
     /// <summary>
@@ -95,7 +106,7 @@ public struct Packet
     }
 
     /// <summary>
-    /// Gets the <see cref="PacketHeader"/> of this specific <see cref="Packet"/>.
+    /// Gets the <see cref="PacketHeader"/> of this <see cref="Packet"/>.
     /// </summary>
     /// <returns>The <see cref="PacketHeader"/> of this <see cref="Packet"/>.</returns>
     public PacketHeader GetHeader()
@@ -105,10 +116,10 @@ public struct Packet
     }
 
     /// <summary>
-    /// Translates a <see cref="Packet"/> to a <see langword="string"/>.
+    /// Translates a <see cref="Packet"/> to <see langword="string"/>.
     /// </summary>
-    /// <param name="packet">The packet we wish to translate from.</param>
-    /// <returns>The data of the provided <see cref="Packet"/> as a <see langword="string"/>.</returns>
+    /// <param name="packet">The <see cref="Packet"/> we wish to translate from.</param>
+    /// <returns>The data of the provided <see cref="Packet"/> as <see langword="string"/>.</returns>
     public static string ToString(Packet packet)
     {
         // Encode the data to string
@@ -127,7 +138,7 @@ public struct Packet
         if (header != PacketHeader.String)
         {
             // We can't do shit!
-            throw new Exception("Header is not a string format!");
+            throw new Exception("This packet is not a string, as per its header!");
         }
 
         // Return the parsed content!
@@ -135,12 +146,52 @@ public struct Packet
     }
 
     /// <summary>
-    /// Translates a <see cref="Packet"/> to a <see langword="string"/>.
+    /// Translates a <see cref="Packet"/> to <see langword="int"/>.
     /// </summary>
-    /// <returns>The data of this <see cref="Packet"/> as a <see langword="string"/>.</returns>
+    /// <param name="packet">The <see cref="Packet"/> we wish to translate from.</param>
+    /// <returns>The data of the provided <see cref="Packet"/> as <see langword="int"/>.</returns>
+    public static int ToInteger(Packet packet)
+    {
+        // Encode the data to string
+        string data = Encoding.UTF8.GetString(packet.Data);
+
+        // Get the header
+        PacketHeader header = packet.GetHeader();
+
+        // Ensure we have a pipe differing the header to the data
+        int separatorIdx = data.IndexOf('|');
+
+        // Get the content
+        string content = data.Substring(separatorIdx + 1);
+
+        // If the header isn't an integer...
+        if (header != PacketHeader.Integer)
+        {
+            // We can't do shit!
+            throw new Exception("This packet is not an integer, as per its header!");
+        }
+
+        // Return the parsed content!
+        return int.Parse(content);
+    }
+
+    /// <summary>
+    /// Translates this <see cref="Packet"/> to a <see langword="string"/>.
+    /// </summary>
+    /// <returns>The data of this <see cref="Packet"/> as <see langword="string"/>.</returns>
     public new string ToString()
     {
-        // Simply call the above method
+        // Simply call the static method
         return ToString(this);
+    }
+
+    /// <summary>
+    /// Translates this <see cref="Packet"/> to a <see langword="int"/>.
+    /// </summary>
+    /// <returns>The data of this <see cref="Packet"/> as <see langword="int"/>.</returns>
+    public int ToInteger()
+    {
+        // Simply call the static method
+        return ToInteger(this);
     }
 }

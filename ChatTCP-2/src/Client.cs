@@ -4,7 +4,7 @@ using System.Net.Sockets;
 namespace ChatTCP;
 
 /// <summary>
-/// A client that can be connected to a server, with a username, etc.
+/// A client that can be connected to a server, has a username, etc.
 /// </summary>
 public class Client
 {
@@ -73,6 +73,7 @@ public class Client
     /// Connects to a server from the specified server argument.
     /// </summary>
     /// <param name="server">The server we wish to connect to.</param>
+    /// <returns><see cref="NetworkResult.OK"/> if it succeeded, <see cref="NetworkResult.Error"/> otherwise.</returns>
     public NetworkResult ConnectToServer(Server server)
     {
         // Call the regular ConnectToServer method with the server's address and port
@@ -80,10 +81,10 @@ public class Client
     }
 
     /// <summary>
-    /// Connects to a server with the specified address and port.
+    /// Connects to a server with the specified endpoint.
     /// </summary>
-    /// <param name="addr">The IP address of the server we wish to connect to.</param>
-    /// <param name="port">The port we wish to connect to.</param>
+    /// <param name="endpoint">The endpoint of the server we wish to join.</param>
+    /// <returns><see cref="NetworkResult.OK"/> if it succeeded, <see cref="NetworkResult.Error"/> otherwise.</returns>
     public NetworkResult ConnectToServer(IPEndPoint endpoint)
     {
         try
@@ -107,7 +108,7 @@ public class Client
             socket.Connect(endpoint);
 
             // Start listening
-            StartListening();
+            StartListeningAsync();
 
             // Send our username to the server
             socket.SendTo(Packet.FromString(Username!).Data, endpoint);
@@ -116,7 +117,7 @@ public class Client
             ConnectedServer = endpoint;
 
             // Log some information and return a successful operation
-            Log.Info($"{{Client}} Successfully connected to server \"{endpoint}\"!");
+            Log.Info($"{{Client}} Successfully connected to server @ {endpoint}!");
             return NetworkResult.OK;
         }
         catch (SocketException exc) // If we get a socket exception...
@@ -150,7 +151,7 @@ public class Client
     /// <summary>
     /// Starts listening for incoming <see cref="Packet"/>s.
     /// </summary>
-    private void StartListening()
+    private async Task StartListeningAsync()
     {
         // If the socket's invalid...
         if (socket == null || !socket.Connected)
@@ -163,16 +164,17 @@ public class Client
         // We're now listening!
         isListening = true;
 
-        // Run the listening loop in a separate thread
-        Thread listenerThread = new Thread(() =>
+        try
         {
+            // Run the listening loop asynchronously
             while (isListening)
             {
+                // Buffer to store incoming data
+                byte[] buffer = new byte[1024];
                 try
                 {
-                    // Buffer to store incoming data
-                    byte[] buffer = new byte[1024];
-                    int bytesRead = socket.Receive(buffer);
+                    // Asynchronously receive data
+                    int bytesRead = await socket.ReceiveAsync(buffer, SocketFlags.None);
 
                     if (bytesRead > 0)
                     {
@@ -182,17 +184,20 @@ public class Client
                         ReceivePacket(receivedData);
                     }
                 }
-                catch (SocketException exc) // If we catch an exception...
+                catch (SocketException exc)
                 {
                     // Log about it and stop listening!
-                    Log.Error($"{{Client}} Socket exception caught while receiving packet!\n\"{exc.Message}\" - {exc.SocketErrorCode}");
+                    Log.Error($"{{Client}} Socket exception caught while receiving packet!\n\"{exc.Message}\"");
                     StopListening();
                 }
             }
-        });
-
-        listenerThread.IsBackground = true;
-        listenerThread.Start();
+        }
+        catch (Exception exc)
+        {
+            // Log any unexpected exceptions
+            Log.Error($"{{Client}} Unexpected exception in listening loop!\n\"{exc.Message}\"");
+            StopListening();
+        }
     }
 
     /// <summary>
@@ -248,7 +253,9 @@ public class Client
                 Log.Error("Invalid packet header!");
                 return NetworkResult.Error;
 
+            // We've received a string! Write it to the console
             case PacketHeader.String:
+                Console.WriteLine(Packet.ToString(Packet.FromData(data)));
                 return NetworkResult.OK;
         }
     }

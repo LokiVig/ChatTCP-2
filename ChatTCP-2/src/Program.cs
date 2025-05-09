@@ -25,16 +25,20 @@ public class Program
     /// <summary>
     /// Initializes the program.
     /// </summary>
-    public static void Main()
+    public static async Task Main()
     {
         // Create our local client
-        LocalClient = Client.Initialize("Username");
+        LocalClient = Client.Initialize("Lokiv");
 
         // We should start by hosting a localhost server
         LocalServer = Server.Initialize(IPAddress.Loopback, 1337);
 
-        // Connect to the localhost server
-        LocalClient.ConnectToServer(LocalServer);
+        // If we failed to connect to the local server...
+        if (LocalClient.ConnectToServer(LocalServer) != NetworkResult.OK)
+        {
+            // Throw an exception!
+            throw new Exception("Local client failed to connect to the local server!");
+        }
 
         // We're now active!
         active = true;
@@ -45,11 +49,14 @@ public class Program
             // Update the local server
             LocalServer.Update();
 
-            // Send a debug message
+            // Send a debug message!
             if (LocalClient.SendMessage("Debug!") != NetworkResult.OK)
             {
                 throw new Exception();
             }
+
+            // Make the while loop take it easy! Don't wanna overload the CPU
+            await Task.Delay(10);
         }
 
         // Dispose of the server

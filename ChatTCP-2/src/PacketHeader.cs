@@ -16,7 +16,12 @@ public enum PacketHeader
     Unknown,
 
     /// <summary>
-    /// A regular string value.
+    /// A regular <see langword="string"/> value.
     /// </summary>
-    String
+    String, 
+
+    /// <summary>
+    /// A regular <see langword="int"/> value.
+    /// </summary>
+    Integer
 }

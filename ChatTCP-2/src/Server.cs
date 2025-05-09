@@ -19,11 +19,6 @@ public class Server : IDisposable
     public int Port;
 
     /// <summary>
-    /// The list of messages sent in this server.
-    /// </summary>
-    public List<Message> Messages = new();
-
-    /// <summary>
     /// The actual networking socket of this server.
     /// </summary>
     private Socket? socket;
@@ -47,7 +42,7 @@ public class Server : IDisposable
     public static Server Initialize(IPAddress? addr = null, int? port = null)
     {
         // Log some information
-        Log.Info($"{{Server}} Initializing server at address \"{addr}:{port}\"...");
+        Log.Info($"{{Server}} Initializing server @ {addr}:{port}...");
 
         // Create a new server, possibly with the specified address and port
         // If either are null, they'll be their default values
@@ -86,18 +81,8 @@ public class Server : IDisposable
     /// <param name="msg">The message we wish to send.</param>
     public NetworkResult SendMessage(string msg, bool server)
     {
-        // Create a new message
-        Message message = new Message()
-        {
-            Content = msg,
-            TimeSent = DateTime.Now
-        };
-
-        // Add the message to our list of messages
-        Messages.Add(message);
-
         // Send a packet with the message
-        return SendPacket(Packet.FromString($"{message}"));
+        return SendPacket(Packet.FromString($"{(server ? "[SERVER] " : "")}{msg}"));
     }
 
     /// <summary>
@@ -107,18 +92,8 @@ public class Server : IDisposable
     /// <param name="recipient">The client to receive our message.</param>
     public NetworkResult SendMessage(string msg, bool server, Client recipient)
     {
-        // Create a new message
-        Message message = new Message()
-        {
-            Content = msg,
-            TimeSent = DateTime.Now
-        };
-
-        // Add the message to our list of messages
-        Messages.Add(message);
-
         // Send a packet with the message
-        return SendPacket(Packet.FromString($"{message}"), recipient);
+        return SendPacket(Packet.FromString($"{(server ? "[SERVER] " : "")}{msg}"), recipient);
     }
 
     /// <summary>
@@ -133,26 +108,12 @@ public class Server : IDisposable
             throw new Exception("Socket is invalid!");
         }
 
-        try
+        // If our socket is polling...
+        if (socket.Poll(0, SelectMode.SelectRead))
         {
-            // If we can poll...
-            if (socket.Poll(0, SelectMode.SelectRead))
-            {
-                // Buffer socket, holds the value of the socket's acception, null otherwise
-                Socket? connectedSocket = null;
-
-                // If we just accepted a connection...
-                if ((connectedSocket = socket.Accept()) != null)
-                {
-                    // Do the special things to do!
-                    OnAcceptConnection(connectedSocket);
-                }
-            }
-        }
-        catch (SocketException exc)
-        {
-            Log.Error($"{{Server}} Socket exception caught while trying to accept new sockets!\n\"{exc.Message}\"");
-            return;
+            // Accept the newly connected socket!
+            Socket connectedSocket = socket.Accept();
+            OnAcceptConnection(connectedSocket);
         }
 
         // For every client that's connected...
@@ -167,29 +128,20 @@ public class Server : IDisposable
                 continue;
             }
 
-            try
+            if (cl.GetSocket().Available > 0)
             {
-                // If we can poll...
-                if (cl.GetSocket().Poll(0, SelectMode.SelectRead))
-                {
-                    // Create a new buffer and amount of bytes read
-                    byte[] buffer = new byte[1024];
-                    int bytesRead = cl.GetSocket().Receive(buffer);
+                // Create a new buffer and amount of bytes read
+                byte[] buffer = new byte[1024];
+                int bytesRead = cl.GetSocket().Receive(buffer);
 
-                    // If we read any bytes...
-                    if (bytesRead > 0)
-                    {
-                        // Get the data, copy it into a new array, and receive it as a packet!
-                        byte[] receivedData = new byte[bytesRead];
-                        Array.Copy(buffer, receivedData, bytesRead);
-                        ReceivePacket(receivedData, cl);
-                    }
+                // If we read any bytes...
+                if (bytesRead > 0)
+                {
+                    // Get the data, copy it into a new array, and receive it as a packet!
+                    byte[] receivedData = new byte[bytesRead];
+                    Array.Copy(buffer, receivedData, bytesRead);
+                    ReceivePacket(receivedData, cl);
                 }
-            }
-            catch (SocketException exc)
-            {
-                Log.Error($"{{Server}} Socket exception caught while trying to receive packets!\n\"{exc.Message}\"");
-                return;
             }
         }
     }
@@ -283,7 +235,7 @@ public class Server : IDisposable
     }
 
     /// <summary>
-    /// Things to do when we've just accepted a connection!
+    /// Things to do when we've just accepted a connection.
     /// </summary>
     private void OnAcceptConnection(Socket connectedSocket)
     {
