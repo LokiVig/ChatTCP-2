@@ -156,6 +156,7 @@ public class Client
     /// <param name="client">The client we wish to send a message to.</param>
     public NetworkResult SendMessage(string msg, Client client)
     {
+        // Send a packet containing our username, message and some metadata specifying the receiving client
         return SendPacket(Packet.FromString($"{Username}: {msg}&{client.Username}"));
     }
 

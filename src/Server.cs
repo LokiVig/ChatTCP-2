@@ -85,7 +85,7 @@ public class Server : IDisposable
     /// Sends a message globally to all connected sockets.
     /// </summary>
     /// <param name="msg">The message we wish to send.</param>
-    public NetworkResult SendMessage(string msg, bool server)
+    public NetworkResult SendMessage(string msg, bool server = false)
     {
         // Send a packet with the message
         return SendPacket(Packet.FromString($@"[{DateTime.Now:HH\:mm}] " + $"{(server ? "[SERVER] " : "")}{msg}"));
@@ -96,7 +96,7 @@ public class Server : IDisposable
     /// </summary>
     /// <param name="msg">The message we wish to send.</param>
     /// <param name="recipient">The client to receive our message.</param>
-    public NetworkResult SendMessage(string msg, bool server, Client recipient)
+    public NetworkResult SendMessage(string msg, Client recipient, bool server = false)
     {
         // Send a packet with the message
         return SendPacket(Packet.FromString($@"[{DateTime.Now:HH\:mm}] " + $"{(server ? "[SERVER] " : "")}{msg}"), recipient);
@@ -130,7 +130,7 @@ public class Server : IDisposable
             {
                 // They're disconnected! Send a message to everyone of such and remove them from the list of clients
                 connectedClients.Remove(cl);
-                SendMessage($"User \"{cl.Username}\" has disconnected!", true);
+                SendMessage($"User \"{cl.Username}\" has disconnected!", server: true);
                 continue;
             }
 
@@ -247,13 +247,13 @@ public class Server : IDisposable
                         if (packet.GetMetadata()!.Contains(cl.Username))
                         {
                             // Send a specific message to this client!
-                            return SendMessage(packet.ToString(), false, cl);
+                            return SendMessage(packet.ToString(), cl);
                         }
                     }
                 }
 
                 // Send a message to every client
-                return SendMessage(packet.ToString(), false);
+                return SendMessage(packet.ToString());
         }
     }
 
@@ -291,7 +291,7 @@ public class Server : IDisposable
 
         // Add it to the list of connected clients and log a new join!
         connectedClients.Add(client);
-        SendMessage($"User \"{client.Username}\" has joined the server!", true);
+        SendMessage($"User \"{client.Username}\" has joined the server!", server: true);
     }
 
     /// <summary>
