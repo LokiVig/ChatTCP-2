@@ -56,7 +56,7 @@ public class Program
             if (HandleInput() != NetworkResult.OK)
             {
                 // Throw an exception!
-                throw new Exception("A network function in HandleInput() resulted in an error!");
+                throw new Exception("A network function while handling inputs resulted in an error!");
             }
 
             // Make the while loop take it easy! Don't wanna overload the CPU
@@ -75,17 +75,17 @@ public class Program
     /// </summary>
     private static void DrawMessages()
     {
+        // Get the list of messages
+        List<string> messages = LocalClient!.ReceivedMessages;
+        
         // Clear the console
         Console.Clear();
 
-        // Get our list of messages
-        List<string> messages = LocalClient!.ReceivedMessages;
-
-        // For every message in our received messages...
-        for (int i = 0; i < messages.Count; i++)
+        // For every message...
+        foreach (string message in messages)
         {
-            Console.SetCursorPosition(0, i);
-            Console.Write(messages[i]);
+            // Write it!
+            Console.WriteLine(message);
         }
     }
 

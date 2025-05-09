@@ -283,6 +283,7 @@ public class Client : IDisposable
         // Do different things depending on the received packet's header
         switch (packet.GetHeader())
         {
+            // Invalid packet received!
             default:
             case PacketHeader.Invalid:
                 Log.Error("Invalid packet header!");
