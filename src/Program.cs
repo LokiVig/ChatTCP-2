@@ -78,7 +78,7 @@ public class Program
         for (int i = 0; i < messages.Count; i++)
         {
             Console.SetCursorPosition(0, i);
-            Console.WriteLine(messages[i]);
+            Console.Write(messages[i]);
         }
     }
 
@@ -99,20 +99,29 @@ public class Program
         // Take the user's input
         string input = Console.ReadLine() ?? string.Empty;
 
-        // Depending on the input...
-        switch (input)
+        // Gets connection information about the server we're on right now
+        if (input.Contains("/connection") ||
+            input.Contains("/conn"))
         {
-            // If we didn't do anything special, just write a message...
-            default:
-                LocalClient?.SendMessage($"{LocalClient?.Username}: {input}"); // Send our input as a message!
-                break;
-
-            // Gets connection information about the server
-            case "/connection":
-            case "/conn":
-                // Send a message to ourselves as though we're the server
-                LocalClient?.SendMessage($"Connected to: {LocalServer?.GetEndPoint()}", ["SERVER", LocalClient?.Username]);
-                break;
+            // Send a message to ourselves as though we're the server
+            LocalClient?.SendMessage($"Connected to: {LocalServer?.GetEndPoint()}", ["SERVER", LocalClient?.Username]);
+        }
+        else // We didn't do anything special! Send our input as a regular message
+        {
+            // If we didn't input emptiness...
+            if (!string.IsNullOrEmpty(input))
+            {
+                // If the input contains an '@' symbol...
+                if (input.Contains('@'))
+                {
+                    // We're sending a DM to the person we're @'ing!
+                    LocalClient?.SendMessage(input.Split('@')[0].TrimEnd(), [LocalClient?.Username, input.Split('@')[1]]);
+                    return;
+                }
+                
+                // Send the input!
+                LocalClient?.SendMessage($"{LocalClient?.Username}: {input}");
+            }
         }
     }
 }

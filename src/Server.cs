@@ -250,6 +250,9 @@ public class Server : IDisposable
                             return SendMessage($"[From {packet.GetMetadata()?[0]}, To {cl.Username}] {packet.ToString()}", cl);
                         }
                     }
+
+                    // We couldn't find any applicable information to do with this metadata-filled message!
+                    return NetworkResult.Error;
                 }
 
                 // Send a message to every client
