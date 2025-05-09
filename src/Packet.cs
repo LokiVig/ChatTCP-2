@@ -120,7 +120,7 @@ public struct Packet
     /// </summary>
     /// <param name="packet">The <see cref="Packet"/> we wish to get metadata from.</param>
     /// <returns>The list of metadata variables in the specified <see cref="Packet"/>, or <see langword="null"/>.</returns>
-    public static List<string>? GetMetadata(Packet packet)
+    public static List<string> GetMetadata(Packet packet)
     {
         // The metadata we're to fill
         List<string>? metadata = null;
@@ -140,7 +140,7 @@ public struct Packet
     /// Gets extra metadata from this <see cref="Packet"/>.
     /// </summary>
     /// <returns>The list of metadata variables in this <see cref="Packet"/>, or <see langword="null"/>.</returns>
-    public List<string>? GetMetadata()
+    public List<string> GetMetadata()
     {
         // Simply call the static method with this as its argument
         return GetMetadata(this);
@@ -152,17 +152,18 @@ public struct Packet
     /// <param name="packet">The <see cref="Packet"/> we wish to check for metadata within.</param>
     /// <param name="metadata">The list of metadata objects we gather.</param>
     /// <returns><see langword="true"/> if it does, <see langword="false"/> otherwise.</returns>
-    public static bool HasMetadata(Packet packet, out List<string>? metadata)
+    public static bool HasMetadata(Packet packet, out List<string> metadata)
     {
         // Get the data of the packet
         string data = packet.ToString(true);
 
         // For every '&' we should separate it
-        metadata = data.Split('&').ToList() ?? null;
-        metadata?.RemoveAt(0); // Remove the first index, that's just our regular packet info
+        metadata = data.Split('&').ToList();
+        metadata.RemoveAt(0); // Remove the first index, that's just our regular packet info
 
         // If the amount of items in the array is > 0 or it's not null...
-        if (metadata != null || metadata?.Count > 0)
+        if (metadata != null && 
+            metadata?.Count > 0)
         {
             // Return true!
             return true;
@@ -234,7 +235,7 @@ public struct Packet
     /// </summary>
     /// <param name="packet">The <see cref="Packet"/> we wish to translate from.</param>
     /// <returns>The data of the provided <see cref="Packet"/> as <see langword="string"/>.</returns>
-    public static string ToString(Packet packet, bool wantMetadata = false)
+    public static string ToString(Packet packet, bool wantsMetadata = false)
     {
         // Encode the data to string
         string data = Encoding.UTF8.GetString(packet.Data);
@@ -256,7 +257,7 @@ public struct Packet
         }
 
         // If we don't want metadata...
-        if (!wantMetadata)
+        if (!wantsMetadata)
         {
             // If the packet has metadata...
             if (packet.HasMetadata())
@@ -274,9 +275,9 @@ public struct Packet
     /// Translates this <see cref="Packet"/> to a <see langword="string"/>.
     /// </summary>
     /// <returns>The data of this <see cref="Packet"/> as <see langword="string"/>.</returns>
-    public string ToString(bool wantMetadata = false)
+    public string ToString(bool wantsMetadata = false)
     {
         // Simply call the static method with this as its argument
-        return ToString(this, wantMetadata);
+        return ToString(this, wantsMetadata);
     }
 }

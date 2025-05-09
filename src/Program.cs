@@ -104,13 +104,14 @@ public class Program
         {
             // If we didn't do anything special, just write a message...
             default:
-                LocalClient?.SendMessage(input); // Send our input!
+                LocalClient?.SendMessage($"{LocalClient?.Username}: {input}"); // Send our input as a message!
                 break;
 
             // Gets connection information about the server
             case "/connection":
             case "/conn":
-                LocalClient?.SendMessage($"Connected to: {LocalServer?.GetEndPoint()}", LocalClient);
+                // Send a message to ourselves as though we're the server
+                LocalClient?.SendMessage($"Connected to: {LocalServer?.GetEndPoint()}", ["SERVER", LocalClient?.Username]);
                 break;
         }
     }

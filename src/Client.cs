@@ -143,10 +143,11 @@ public class Client
     /// Sends a message to everyone in the server.
     /// </summary>
     /// <param name="msg">The message we wish to send.</param>
+    /// <returns><see cref="NetworkResult.OK"/> if it succeeds, <see cref="NetworkResult.Error"/> otherwise.</returns>
     public NetworkResult SendMessage(string msg)
     {
         // Send a packet containing our username and message
-        return SendPacket(Packet.FromString($"{Username}: {msg}"));
+        return SendPacket(Packet.FromString(msg));
     }
 
     /// <summary>
@@ -154,10 +155,33 @@ public class Client
     /// </summary>
     /// <param name="msg">The message we wish to send.</param>
     /// <param name="client">The client we wish to send a message to.</param>
+    /// <returns><see cref="NetworkResult.OK"/> if it succeeds, <see cref="NetworkResult.Error"/> otherwise.</returns>
     public NetworkResult SendMessage(string msg, Client client)
     {
         // Send a packet containing our username, message and some metadata specifying the receiving client
-        return SendPacket(Packet.FromString($"{Username}: {msg}&{client.Username}"));
+        return SendPacket(Packet.FromString($"{msg}&{Username}&{client.Username}"));
+    }
+
+    /// <summary>
+    /// Sends a message with specific metadata.
+    /// </summary>
+    /// <param name="msg">The message we wish to send.</param>
+    /// <param name="metadata">The metadata of the message we wish to send.</param>
+    /// <returns><see cref="NetworkResult.OK"/> if it succeeds, <see cref="NetworkResult.Error"/> otherwise.</returns>
+    public NetworkResult SendMessage(string msg, List<string> metadata)
+    {
+        // The result string that we wish to send to the server
+        string result = msg;
+
+        // For every piece of metadata...
+        for (int i = 0; i < metadata.Count; i++)
+        {
+            // Add it to the result string!
+            result += $"&{metadata[i]}";
+        }
+
+        // Send a packet containing our resulting string
+        return SendPacket(Packet.FromString(result));
     }
 
     /// <summary>

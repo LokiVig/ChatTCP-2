@@ -243,11 +243,11 @@ public class Server : IDisposable
                     // For every client...
                     foreach (Client cl in connectedClients)
                     {
-                        // If the metadata contains this client's username...
-                        if (packet.GetMetadata()!.Contains(cl.Username))
+                        // If the second metadata variable is a connected client's username...
+                        if (packet.GetMetadata()?[1] == cl.Username)
                         {
-                            // Send a specific message to this client!
-                            return SendMessage(packet.ToString(), cl);
+                            // Send a private message to this client!
+                            return SendMessage($"[From {packet.GetMetadata()?[0]}, To {cl.Username}] {packet.ToString()}", cl);
                         }
                     }
                 }
