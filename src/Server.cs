@@ -44,16 +44,22 @@ public class Server : IDisposable
         // Log some information
         Log.Info($"{{Server}} Initializing server @ {addr}:{port}...");
 
-        // Create a new server, possibly with the specified address and port
-        // If either are null, they'll be their default values
+        // Create a new server
         Server res = new Server();
+
+        // Set our address and port
+        // Default, if either are null, is {IPAddress.Any}:27015
         res.Address = addr ?? IPAddress.Any;
         res.Port = port ?? 27015;
-        res.socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+
+        // Set our local endpoint
         res.localEndPoint = new IPEndPoint(res.Address, res.Port);
-        res.socket.Blocking = false;
-        res.socket.Bind(res.localEndPoint);
-        res.socket.Listen();
+
+        // Create a socket
+        res.socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+        res.socket.Blocking = false; // We shouldn't be in blocking mode
+        res.socket.Bind(res.localEndPoint); // Bind us to our local endpoint
+        res.socket.Listen(); // Start listening!
 
         // Return the result
         return res;
@@ -82,7 +88,7 @@ public class Server : IDisposable
     public NetworkResult SendMessage(string msg, bool server)
     {
         // Send a packet with the message
-        return SendPacket(Packet.FromString($"{(server ? "[SERVER] " : "")}{msg}"));
+        return SendPacket(Packet.FromString($@"[{DateTime.Now:HH\:mm}] " + $"{(server ? "[SERVER] " : "")}{msg}"));
     }
 
     /// <summary>
@@ -93,7 +99,7 @@ public class Server : IDisposable
     public NetworkResult SendMessage(string msg, bool server, Client recipient)
     {
         // Send a packet with the message
-        return SendPacket(Packet.FromString($"{(server ? "[SERVER] " : "")}{msg}"), recipient);
+        return SendPacket(Packet.FromString($@"[{DateTime.Now:HH\:mm}] " + $"{(server ? "[SERVER] " : "")}{msg}"), recipient);
     }
 
     /// <summary>
@@ -223,13 +229,30 @@ public class Server : IDisposable
         // Do different things depending on the received packet's header
         switch (packet.GetHeader())
         {
+            // Invalid packets
             default:
             case PacketHeader.Invalid:
                 Log.Error("Invalid packet header!");
                 return NetworkResult.Error;
 
-            // We should send the received string to every user in the server!
+            // We received a message!
             case PacketHeader.String:
+                // If the packet has metadata...
+                if (packet.HasMetadata())
+                {
+                    // For every client...
+                    foreach (Client cl in connectedClients)
+                    {
+                        // If the metadata contains this client's username...
+                        if (packet.GetMetadata()!.Contains(cl.Username))
+                        {
+                            // Send a specific message to this client!
+                            return SendMessage(packet.ToString(), false, cl);
+                        }
+                    }
+                }
+
+                // Send a message to every client
                 return SendMessage(packet.ToString(), false);
         }
     }
@@ -293,7 +316,7 @@ public class Server : IDisposable
     /// Gets this <see cref="Server"/>'s <see cref="IPEndPoint"/>.
     /// </summary>
     /// <returns>This <see cref="Server"/>'s <see cref="IPEndPoint"/>.</returns>
-    public IPEndPoint GetLocalEndPoint()
+    public IPEndPoint GetEndPoint()
     {
         return localEndPoint!;
     }

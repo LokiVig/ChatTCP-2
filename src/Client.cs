@@ -11,12 +11,17 @@ public class Client
     /// <summary>
     /// The visual username of this client.
     /// </summary>
-    public string? Username;
+    public string Username = string.Empty;
 
     /// <summary>
     /// The server we're connected to.
     /// </summary>
     public IPEndPoint? ConnectedServer;
+
+    /// <summary>
+    /// This client's list of received messages.
+    /// </summary>
+    public List<string> ReceivedMessages = new List<string>();
 
     /// <summary>
     /// The client's socket.
@@ -43,11 +48,17 @@ public class Client
         // Log some information
         Log.Info($"{{Client}} Initializing user \"{username}\"...");
 
-        // Create a new client with the specified username
+        // Create a new client
         Client res = new Client();
+
+        // Specify our username
         res.Username = username;
-        res.socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+
+        // Set our local endpoint
         res.localEndPoint = new IPEndPoint(IPAddress.Any, 27015);
+
+        // Create a socket
+        res.socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
         res.socket.Bind(res.localEndPoint);
 
         // Return the result
@@ -76,8 +87,8 @@ public class Client
     /// <returns><see cref="NetworkResult.OK"/> if it succeeded, <see cref="NetworkResult.Error"/> otherwise.</returns>
     public NetworkResult ConnectToServer(Server server)
     {
-        // Call the regular ConnectToServer method with the server's address and port
-        return ConnectToServer(server.GetLocalEndPoint());
+        // Call the ConnectToServerAsync method with the server's endpoint
+        return ConnectToServer(server.GetEndPoint());
     }
 
     /// <summary>
@@ -108,7 +119,7 @@ public class Client
             socket.Connect(endpoint);
 
             // Start listening
-            StartListeningAsync();
+            StartListening();
 
             // Send our username to the server
             socket.SendTo(Packet.FromString(Username!).Data, endpoint);
@@ -135,7 +146,7 @@ public class Client
     public NetworkResult SendMessage(string msg)
     {
         // Send a packet containing our username and message
-        return SendPacket(Packet.FromString($"\"{Username}\" - {msg}"));
+        return SendPacket(Packet.FromString($"{Username}: {msg}"));
     }
 
     /// <summary>
@@ -145,13 +156,13 @@ public class Client
     /// <param name="client">The client we wish to send a message to.</param>
     public NetworkResult SendMessage(string msg, Client client)
     {
-        throw new NotImplementedException();
+        return SendPacket(Packet.FromString($"{Username}: {msg}&{client.Username}"));
     }
 
     /// <summary>
     /// Starts listening for incoming <see cref="Packet"/>s.
     /// </summary>
-    private async Task StartListeningAsync()
+    private void StartListening()
     {
         // If the socket's invalid...
         if (socket == null || !socket.Connected)
@@ -164,7 +175,8 @@ public class Client
         // We're now listening!
         isListening = true;
 
-        try
+        // A new thread, specifically for listening for new packets
+        Thread listen = new Thread(async () =>
         {
             // Run the listening loop asynchronously
             while (isListening)
@@ -181,7 +193,7 @@ public class Client
                         // Pass the received data to ReceivePacket
                         byte[] receivedData = new byte[bytesRead];
                         Array.Copy(buffer, receivedData, bytesRead);
-                        ReceivePacket(receivedData);
+                        ReceivePacket(Packet.FromData(receivedData));
                     }
                 }
                 catch (SocketException exc)
@@ -190,14 +202,15 @@ public class Client
                     Log.Error($"{{Client}} Socket exception caught while receiving packet!\n\"{exc.Message}\"");
                     StopListening();
                 }
+
+                // Delay the task at the end, we don't wanna overload the CPU!
+                await Task.Delay(25);
             }
-        }
-        catch (Exception exc)
-        {
-            // Log any unexpected exceptions
-            Log.Error($"{{Client}} Unexpected exception in listening loop!\n\"{exc.Message}\"");
-            StopListening();
-        }
+        });
+
+        // Start the listening thread!
+        listen.IsBackground = true;
+        listen.Start();
     }
 
     /// <summary>
@@ -239,12 +252,9 @@ public class Client
     /// <summary>
     /// Receive information from a packet.
     /// </summary>
-    /// <param name="data">The data we received.</param>
-    public NetworkResult ReceivePacket(byte[] data)
+    /// <param name="packet">The packet we received.</param>
+    public NetworkResult ReceivePacket(Packet packet)
     {
-        // Get a packet from the data
-        Packet packet = Packet.FromData(data);
-
         // Do different things depending on the received packet's header
         switch (packet.GetHeader())
         {
@@ -253,9 +263,9 @@ public class Client
                 Log.Error("Invalid packet header!");
                 return NetworkResult.Error;
 
-            // We've received a string! Write it to the console
+            // We've received a string!
             case PacketHeader.String:
-                Console.WriteLine(Packet.ToString(Packet.FromData(data)));
+                ReceivedMessages.Add(packet.ToString()); // Add it to the list of received messages
                 return NetworkResult.OK;
         }
     }
