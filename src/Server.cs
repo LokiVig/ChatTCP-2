@@ -237,15 +237,11 @@ public class Server : IDisposable
                 // If the packet has metadata...
                 if (packet.HasMetadata())
                 {
-                    // For every client...
-                    foreach (Client cl in connectedClients)
+                    // If we can find this connected client...
+                    if (connectedClients.TryFindClient(packet.GetMetadata()?[1]!, out Client? cl))
                     {
-                        // If the second metadata variable is a connected client's username...
-                        if (packet.GetMetadata()?[1] == cl.Username)
-                        {
-                            // Send a private message to this client!
-                            return SendMessage($"[From {packet.GetMetadata()?[0]}, To {cl.Username}] {packet.ToString()}", cl);
-                        }
+                        // Send a private message to this client!
+                        return SendMessage($"[From {packet.GetMetadata()?[0]}, To {cl?.Username}] {packet.ToString()}", cl!);
                     }
 
                     // We couldn't find any applicable information to do with this metadata-filled message!

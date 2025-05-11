@@ -106,9 +106,42 @@ public class Program
         // Take the user's input
         string input = Console.ReadLine() ?? string.Empty;
 
-        // Gets connection information about the server we're on right now
-        if (input.Contains("/connection") ||
+        // Connects to a new server with the specified address and port
+        if (input.Contains("/connect") ||
             input.Contains("/conn"))
+        {
+            // Get the variables
+            List<string> variables = input.Split(" ").ToList();
+            variables.RemoveAt(0); // Remove the first value, that's just the command
+
+            // If we have an invalid amount of arguments for this command...
+            if (variables.Count < 2 || variables.Count > 2)
+            {
+                // Send a local message telling us we passed an invalid count!
+                return LocalClient?.SendMessage($"Failed to connect to a server; Invalid argument count passed!", ["CLIENT", LocalClient?.Username]);
+            }
+
+            // If we failed parsing the IP address...
+            if (!IPAddress.TryParse(variables[0], out IPAddress? addr))
+            {
+                // Send a local message telling us we failed!
+                return LocalClient?.SendMessage($"Failed connecting to {variables[0]}:{variables[1]}; IP address failed to be parsed.", ["CLIENT", LocalClient?.Username]);
+            }
+
+            // If we failed parsing the port...
+            if (!int.TryParse(variables[1], out int port))
+            {
+                // Send a local message telling us we failed!
+                return LocalClient?.SendMessage($"Failed connecting to {variables[0]}:{variables[1]}; Port failed to be parsed.", ["CLIENT", LocalClient?.Username]);
+            }
+
+            // Try to connect to a new server with these specifics!
+            return LocalClient?.ConnectToServer(new IPEndPoint(addr, port));
+        }
+
+        // Gets connection information about the server we're on right now
+        if (input.Contains("/connectioninfo") ||
+            input.Contains("/conninfo"))
         {
             // Send a message to ourselves as though we're the server
             return LocalClient?.SendMessage($"Connected to: {LocalServer?.GetEndPoint()}", ["SERVER", LocalClient?.Username]);

@@ -34,6 +34,11 @@ public class Client : IDisposable
     private IPEndPoint? localEndPoint;
 
     /// <summary>
+    /// The thread used for listening.
+    /// </summary>
+    private Thread? listeningThread;
+
+    /// <summary>
     /// Determines whether or not we should be listening.
     /// </summary>
     private bool isListening = false;
@@ -111,18 +116,21 @@ public class Client : IDisposable
             // If we're already connected...
             if (socket.Connected)
             {
+                // Stop listening
+                StopListening(closeSocket: false);
+
                 // Disconnect us!
-                socket.Disconnect(true);
+                socket?.Disconnect(true);
             }
 
             // Connect to the server
-            socket.Connect(endpoint);
+            socket?.Connect(endpoint);
 
             // Start listening
             StartListening();
 
             // Send our username to the server
-            socket.SendTo(Packet.FromString(Username!).Data, endpoint);
+            socket?.SendTo(Packet.FromString(Username!).Data, endpoint);
 
             // We're now connected to this server
             ConnectedServer = endpoint;
@@ -201,7 +209,7 @@ public class Client : IDisposable
         isListening = true;
 
         // A new thread, specifically for listening for new packets
-        Thread listen = new Thread(async () =>
+        listeningThread = new Thread(async () =>
         {
             // Run the listening loop asynchronously
             while (isListening)
@@ -234,17 +242,31 @@ public class Client : IDisposable
         });
 
         // Start the listening thread!
-        listen.IsBackground = true;
-        listen.Start();
+        listeningThread.IsBackground = true;
+        listeningThread.Start();
     }
 
     /// <summary>
     /// Stops listening for incoming packets.
     /// </summary>
-    private void StopListening()
+    private void StopListening(bool closeSocket = true)
     {
+        // Immediately stop listening!
         isListening = false;
-        socket?.Close();
+
+        // If the listening thread is active...
+        if (listeningThread != null)
+        {
+            // Wait for the thread to close
+            listeningThread.Join();
+        }
+
+        // If we should close the socket...
+        if (closeSocket)
+        {
+            // Tell it to close!
+            socket?.Close();
+        }
     }
 
     /// <summary>
